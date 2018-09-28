@@ -4,6 +4,9 @@
 module Endpoints where
 
 import Control.Monad ((>>=))
+-- import Control.Monad.Fail (fail) -- We'll just use the Prelue `fail` for now.
+import Control.Monad.Trans.Except (runExceptT)
+import Control.Monad.Trans.Maybe (MaybeT(MaybeT), maybeToExceptT)
 import Data.ByteString (ByteString)
 import Data.List (intersperse)
 import Data.Maybe (fromMaybe, listToMaybe)
@@ -11,11 +14,11 @@ import Data.Monoid ((<>))
 import Data.Text (Text)
 import Data.Text.Encoding (decodeUtf8', encodeUtf8)
 import Data.Text.Lazy (fromStrict, pack, toStrict)
-import Data.Time.Clock (UTCTime)
+import Data.Time.Clock (getCurrentTime, UTCTime)
 import Data.UUID (fromText, toText, UUID)
 import Hasql.Pool (Pool)
 import Network.HTTP.Types.Status (paymentRequired402)
-import Web.Scotty (ActionM, liftAndCatchIO, param, raise, status, text)
+import Web.Scotty (ActionM, header, liftAndCatchIO, param, raise, status, text)
 import Web.Scotty.Cookie (getCookie, setSimpleCookie)
 
 import AuthSessionHelpers (makeNewUserSession, makeSessionForUser)
@@ -46,36 +49,30 @@ handleLogin connections = do
     (setSimpleCookie "authKey")
     (decodeUtf8' key)
   text $ fromStrict username
-  
-noteConsumption :: Pool -> ActionM ()  -- This needs to be rewritten with better monadic interaction (ActionM <-> Maybe) and more informative error messages.
+
+noteConsumption :: Pool -> ActionM ()
 noteConsumption connections = do
-  (referer' :: Maybe Text) <- getReferer
-  (recievedAt :: UTCTime) <- getTime
-  (authID'' :: Maybe Text) <- getCookie "authID"
-  let (authID' :: Maybe UUID) = authID'' >>= fromText
-  (authKey' :: Maybe ByteString) <- fmap (fmap encodeUtf8) $ getCookie "authKey" 
-  authSession' <- fromMaybe (return Nothing) $ do -- the maybe monad
-    authID <- authID'
-    authKey <- authKey'
-    let getMaybeSession = scottyDoesDB connections $ getRow $ AuthSession.PrimaryKey authID
-    let checkPassword = undefined
-    let ifAuthenticated sess = if checkPassword (AuthSession.hash sess) authKey then Just sess else Nothing
-    return $ fmap (>>= ifAuthenticated) getMaybeSession
-  let consumption' = do -- the maybe monad
-        referer <- referer'
-        authSession <- authSession'
-        return Consumption.Row {
-                 Consumption.consumer = AuthSession.account authSession,
-                 Consumption.item = referer,
-                 Consumption.happened = recievedAt
-               }
-  maybe
-    (do
-      status paymentRequired402
-      text "")
-    (\consumption -> do
-      scottyDoesDB connections $ addRow consumption
-      user <- scottyGuarenteesDB connections $ getRow $ Account.PrimaryKey $ Consumption.consumer consumption
-      text $ fromStrict $ Account.name user)
-    consumption'
+  let checkPassword = undefined -- Delete this!
+  recievedAt <- liftAndCatchIO getCurrentTime
+  eConsumption <- runExceptT $ do
+    let exceptMaybe e = (maybeToExceptT e) . MaybeT
+    referer <- fmap toStrict $ exceptMaybe "Unable to find a 'Referer' header." $ header "Referer"
+    textAuthID <- exceptMaybe "Unable to find a 'authID' cookie." $ getCookie "authID"
+    authID <- maybe (fail "The provided authID was not a valid UUID.") return (fromText textAuthID)
+    authKey <- fmap encodeUtf8 $ exceptMaybe "Unable to find a 'authKey' cookie." $ getCookie "authKey"
+    unAuthSession <- exceptMaybe "No such AuthSession" $ scottyDoesDB connections $ getRow $ AuthSession.PrimaryKey authID
+    authSession <- if (checkPassword (AuthSession.hash unAuthSession) authKey) then return unAuthSession else fail "BAD KEY!"
+    return Consumption.Row {
+                        Consumption.consumer = AuthSession.account authSession,
+                        Consumption.item = referer,
+                        Consumption.happened = recievedAt
+                      }
+  let pleasePay e = do
+                      status paymentRequired402
+                      text e
+  let saveAndRespond consumption = do
+                                     scottyDoesDB connections $ addRow consumption
+                                     user <- scottyGuarenteesDB connections $ getRow $ Account.PrimaryKey $ Consumption.consumer consumption
+                                     text $ fromStrict $ Account.name user
+  either pleasePay saveAndRespond eConsumption
 

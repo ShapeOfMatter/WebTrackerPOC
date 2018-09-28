@@ -17,6 +17,7 @@ executable poc_scotty_server
                   ,scotty-cookie
                   ,text
                   ,time
+                  ,transformers
                   ,tuple
                   ,uuid
     other-modules: AuthSessionHelpers
