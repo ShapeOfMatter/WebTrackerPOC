@@ -5,17 +5,17 @@ module DBTypes.Consumption where
 
 import Data.Functor.Contravariant ((>$<))
 import Data.Monoid ((<>))
-import Data.Text (Text)
 import Data.Time.Clock (UTCTime)
 import Data.UUID (UUID)
 import qualified Hasql.Decoders as Decode
 import qualified Hasql.Encoders as Encode
 
 import DBTypes (DBTuple(..), KeyedTable, Table(..), WritableTable)
+import qualified UnambiguiousStrings as US
 
 data Row = Row {
   consumer :: UUID,
-  item :: Text,
+  item :: US.SText,
   happened :: UTCTime
 }
 

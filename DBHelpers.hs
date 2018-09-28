@@ -3,7 +3,6 @@
 module DBHelpers where
 
 import Data.Monoid ((<>))
-import Data.Text.Lazy (pack)
 import Data.Time.Clock () --NominalDiffTime instance Num
 import Hasql.Connection (settings)
 import Hasql.Pool (acquire, Pool, use)
@@ -12,8 +11,10 @@ import System.Exit (die)
 import Text.Read (readEither)
 import Web.Scotty (ActionM, liftAndCatchIO, raise)
 
+import qualified UnambiguiousStrings as US
+
 scottyActionFromEitherError kind =
-  let raiseError = raise . pack . (("There was a " <> kind <> " error: ") <>) . show
+  let raiseError = raise . US.packLText . (("There was a " <> kind <> " error: ") <>) . show
   in either raiseError return
 
 dbPool :: (String, String, String, String, String, String, String) -> IO Pool
@@ -43,4 +44,4 @@ scottyGuarenteesDB connection session = do
   let eitherX = maybe (Left "We couldn't find the thing in the DB.") (Right) maybeX
   scottyActionFromEitherError "database guarentee" eitherX
 
- 
+

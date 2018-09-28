@@ -7,13 +7,9 @@ import Control.Monad ((>>=))
 -- import Control.Monad.Fail (fail) -- We'll just use the Prelue `fail` for now.
 import Control.Monad.Trans.Except (runExceptT)
 import Control.Monad.Trans.Maybe (MaybeT(MaybeT), maybeToExceptT)
-import Data.ByteString (ByteString)
 import Data.List (intersperse)
 import Data.Maybe (fromMaybe, listToMaybe)
 import Data.Monoid ((<>))
-import Data.Text (Text)
-import Data.Text.Encoding (decodeUtf8', encodeUtf8)
-import Data.Text.Lazy (fromStrict, pack, toStrict)
 import Data.Time.Clock (getCurrentTime, UTCTime)
 import Data.UUID (fromText, toText, UUID)
 import Hasql.Pool (Pool)
@@ -27,28 +23,28 @@ import DBTypes (addRow, getAllRows, getRow)
 import qualified DBTypes.Account as Account (name, PrimaryKey(..), Row(..))
 import qualified DBTypes.AuthSession as AuthSession (identifier, PrimaryKey(..), Row(..))
 import qualified DBTypes.Consumption as Consumption (Row(..))
-import ScottyHelpers (getReferer, getTime)
+import qualified UnambiguiousStrings as US
 
 homepage :: Pool -> ActionM ()
 homepage connections = do
   (accounts :: [Account.Row]) <- scottyDoesDB connections getAllRows
   let accountNames = mconcat $ intersperse ",\n" $ fmap (("\"" <>) . (<> "\"") . Account.name) accounts
-  text $ fromStrict accountNames
+  text $ US.fromStrictText accountNames
 
 handleLogin :: Pool -> ActionM ()
 handleLogin connections = do
-  (username :: Text) <- param "username"
+  (username :: US.SText) <- param "username"
   (maybeExistingUser :: Maybe Account.Row) <- fmap listToMaybe $ fmap (filter((username ==) . Account.name)) $ scottyDoesDB connections getAllRows
-  ((newAuthSession, key) :: (AuthSession.Row, ByteString)) <- maybe
-                                                                (makeNewUserSession connections $ fromStrict username)
+  ((newAuthSession, key) :: (AuthSession.Row, US.SBytes)) <- maybe
+                                                                (makeNewUserSession connections $ US.fromStrictText username)
                                                                 (makeSessionForUser connections)
                                                                 maybeExistingUser
   setSimpleCookie "authID" $ toText $ AuthSession.identifier newAuthSession
   either
-    (text . pack . show)
+    (text . US.packLText . show)
     (setSimpleCookie "authKey")
-    (decodeUtf8' key)
-  text $ fromStrict username
+    (US.strictDecodeEither key)
+  text $ US.fromStrictText username
 
 noteConsumption :: Pool -> ActionM ()
 noteConsumption connections = do
@@ -56,10 +52,10 @@ noteConsumption connections = do
   recievedAt <- liftAndCatchIO getCurrentTime
   eConsumption <- runExceptT $ do
     let exceptMaybe e = (maybeToExceptT e) . MaybeT
-    referer <- fmap toStrict $ exceptMaybe "Unable to find a 'Referer' header." $ header "Referer"
+    referer <- fmap US.toStrictText $ exceptMaybe "Unable to find a 'Referer' header." $ header "Referer"
     textAuthID <- exceptMaybe "Unable to find a 'authID' cookie." $ getCookie "authID"
     authID <- maybe (fail "The provided authID was not a valid UUID.") return (fromText textAuthID)
-    authKey <- fmap encodeUtf8 $ exceptMaybe "Unable to find a 'authKey' cookie." $ getCookie "authKey"
+    authKey <- fmap US.strictEncode $ exceptMaybe "Unable to find a 'authKey' cookie." $ getCookie "authKey"
     unAuthSession <- exceptMaybe "No such AuthSession" $ scottyDoesDB connections $ getRow $ AuthSession.PrimaryKey authID
     authSession <- if (checkPassword (AuthSession.hash unAuthSession) authKey) then return unAuthSession else fail "BAD KEY!"
     return Consumption.Row {
@@ -73,6 +69,6 @@ noteConsumption connections = do
   let saveAndRespond consumption = do
                                      scottyDoesDB connections $ addRow consumption
                                      user <- scottyGuarenteesDB connections $ getRow $ Account.PrimaryKey $ Consumption.consumer consumption
-                                     text $ fromStrict $ Account.name user
+                                     text $ US.fromStrictText $ Account.name user
   either pleasePay saveAndRespond eConsumption
 

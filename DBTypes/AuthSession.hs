@@ -3,7 +3,6 @@
 
 module DBTypes.AuthSession where
 
-import Data.ByteString (ByteString)
 import Data.Functor.Contravariant ((>$<))
 import Data.Monoid ((<>))
 import Data.Time.Clock (UTCTime)
@@ -12,11 +11,12 @@ import qualified Hasql.Decoders as Decode
 import qualified Hasql.Encoders as Encode
 
 import DBTypes (DBTuple(..), KeyedTable, Table(..), WritableTable)
+import qualified UnambiguiousStrings as US
 
 data Row = Row {
   identifier :: UUID,
   account :: UUID,
-  hash :: ByteString,
+  hash :: US.SBytes,
   expires :: UTCTime
   }
 
