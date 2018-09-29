@@ -1,34 +1,38 @@
-module UUIDHelpers where
+{-# LANGUAGE OverloadedStrings #-}
 
---import qualified Data.ByteString as EBS (unpack)
---import qualified Data.ByteString.Lazy as LBS (toStrict)
---import qualified Data.Text as EText (pack)
---import Data.Text.Encoding (encodeUtf8)
---import qualified Data.Text.Lazy as LText (toStrict)
+module UUIDHelpers (
+  UUID,
+  module UUIDHelpers
+) where
+
+import Control.Arrow (left)
+import Control.Monad.Fail (MonadFail)
 import Data.Time.Clock (UTCTime)
--- import qualified Data.Time.Format.ISO8601 as ISO8601
-import Data.UUID (fromText, toByteStrig, UUID)
+--import Data.Time.Format.ISO8601 (iso8601Show)
+import Data.UUID (fromText, toByteString, toText, UUID)
 import Data.UUID.V4 (nextRandom)
 import Data.UUID.V5 (generateNamed)
-import Web.Scotty (Parsable)
+import Web.Scotty (Parsable(parseParam))
 
 import qualified UnambiguiousStrings as US
 
-instance Scotty.Parsable UUID where
-  -- parseParam :: LText.Text -> Either LText.Text UUID
-  parseParam = (maybe (Left "Unable to parse UUID") Right) . fromText . US.toStrictText
+instance Parsable UUID where
+--parseParam :: US.LText -> Either US.LText UUID
+  parseParam = (left US.fromStrictText) . fromSText . US.toStrictText
 
 randomUUID :: IO UUID
 randomUUID = nextRandom
 
-childUUIDFromTime :: UUID -> UTCTime -> UUID
-childFromTime parent time =
-  generateNamed parent $ US.unpackSBytes $ US.strictEncode $ US.packSText $ "this is a dummy string" -- ISO8601.iso8601Show time
+--childUUIDFromTime :: UUID -> UTCTime -> UUID -- This does not guarentee good resolution or abscence of collisions.
+--childFromTime parent time =
+--  generateNamed parent $ US.unpackSBytes $ US.strictEncode $ US.packSText $ iso8601Show time
 
 asPassword :: UUID -> US.SBytes
 asPassword = US.toStrictBytes . toByteString
 
 toSText :: UUID -> US.SText
 toSText = toText
-maybeFromSText :: US.SText -> Maybe UUID
-maybeFromSText = fromText
+
+fromSText :: US.SText -> Either US.SText UUID
+fromSText = (maybe (Left "Unable to parse UUID") Right) . fromText
+

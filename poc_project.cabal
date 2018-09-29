@@ -28,5 +28,6 @@ executable poc_scotty_server
                   ,DBTypes.Consumption
                   ,Endpoints
                   ,UnambiguiousStrings
+                  ,UUIDHelpers
     main-is: Main.hs
     default-language: Haskell2010
