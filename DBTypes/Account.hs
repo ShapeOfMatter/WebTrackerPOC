@@ -5,12 +5,12 @@ module DBTypes.Account where
 
 import Data.Functor.Contravariant ((>$<))
 import Data.Monoid ((<>))
-import Data.UUID (UUID)
 import qualified Hasql.Decoders as Decode
 import qualified Hasql.Encoders as Encode 
 
 import DBTypes (DBTuple(..), KeyedTable, Table(..), WritableTable)
 import qualified UnambiguiousStrings as US
+import UUIDHelpers (UUID)
 
 data Row = Row {
   identifier :: UUID,

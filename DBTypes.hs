@@ -6,8 +6,6 @@ module DBTypes where
 import Data.List (intercalate)
 import Data.Monoid ((<>), mconcat)
 import Data.Proxy (Proxy(Proxy))
---import Data.Text (pack)
---import Data.Text.Encoding (encodeUtf8)
 import qualified Hasql.Decoders as Decode
 import qualified Hasql.Encoders as Encode
 import Hasql.Session (Session, statement)

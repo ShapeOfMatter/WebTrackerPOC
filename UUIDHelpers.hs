@@ -18,7 +18,7 @@ import qualified UnambiguiousStrings as US
 
 instance Parsable UUID where
 --parseParam :: US.LText -> Either US.LText UUID
-  parseParam = (left US.fromStrictText) . fromSText . US.toStrictText
+  parseParam = (maybe (Left "Unable to parse UUID") Right) . fromText . US.toStrictText
 
 randomUUID :: IO UUID
 randomUUID = nextRandom
@@ -33,6 +33,6 @@ asPassword = US.toStrictBytes . toByteString
 toSText :: UUID -> US.SText
 toSText = toText
 
-fromSText :: US.SText -> Either US.SText UUID
-fromSText = (maybe (Left "Unable to parse UUID") Right) . fromText
+fromSText :: US.SText -> Maybe UUID
+fromSText = fromText
 

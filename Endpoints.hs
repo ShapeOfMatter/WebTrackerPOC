@@ -5,13 +5,12 @@ module Endpoints where
 
 import Control.Monad ((>>=))
 -- import Control.Monad.Fail (fail) -- We'll just use the Prelue `fail` for now.
-import Control.Monad.Trans.Except (runExceptT)
+import Control.Monad.Trans.Except (ExceptT, runExceptT)
 import Control.Monad.Trans.Maybe (MaybeT(MaybeT), maybeToExceptT)
 import Data.List (intersperse)
 import Data.Maybe (fromMaybe, listToMaybe)
 import Data.Monoid ((<>))
 import Data.Time.Clock (getCurrentTime, UTCTime)
-import Data.UUID (fromText, toText, UUID)
 import Hasql.Pool (Pool)
 import Network.HTTP.Types.Status (paymentRequired402)
 import Web.Scotty (ActionM, header, liftAndCatchIO, param, raise, status, text)
@@ -24,6 +23,7 @@ import qualified DBTypes.Account as Account (name, PrimaryKey(..), Row(..))
 import qualified DBTypes.AuthSession as AuthSession (identifier, PrimaryKey(..), Row(..))
 import qualified DBTypes.Consumption as Consumption (Row(..))
 import qualified UnambiguiousStrings as US
+import UUIDHelpers (fromSText, toSText, UUID)
 
 homepage :: Pool -> ActionM ()
 homepage connections = do
@@ -39,7 +39,7 @@ handleLogin connections = do
                                                                 (makeNewUserSession connections $ US.fromStrictText username)
                                                                 (makeSessionForUser connections)
                                                                 maybeExistingUser
-  setSimpleCookie "authID" $ toText $ AuthSession.identifier newAuthSession
+  setSimpleCookie "authID" $ toSText $ AuthSession.identifier newAuthSession
   either
     (text . US.packLText . show)
     (setSimpleCookie "authKey")
@@ -54,7 +54,7 @@ noteConsumption connections = do
     let exceptMaybe e = (maybeToExceptT e) . MaybeT
     referer <- fmap US.toStrictText $ exceptMaybe "Unable to find a 'Referer' header." $ header "Referer"
     textAuthID <- exceptMaybe "Unable to find a 'authID' cookie." $ getCookie "authID"
-    authID <- maybe (fail "The provided authID was not a valid UUID.") return (fromText textAuthID)
+    authID <- maybe (fail "The provided authID was not a valid UUID.") return (fromSText textAuthID)
     authKey <- fmap US.strictEncode $ exceptMaybe "Unable to find a 'authKey' cookie." $ getCookie "authKey"
     unAuthSession <- exceptMaybe "No such AuthSession" $ scottyDoesDB connections $ getRow $ AuthSession.PrimaryKey authID
     authSession <- if (checkPassword (AuthSession.hash unAuthSession) authKey) then return unAuthSession else fail "BAD KEY!"
