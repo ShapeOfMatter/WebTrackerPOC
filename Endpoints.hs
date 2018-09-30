@@ -16,7 +16,7 @@ import Network.HTTP.Types.Status (paymentRequired402)
 import Web.Scotty (ActionM, header, liftAndCatchIO, param, raise, status, text)
 import Web.Scotty.Cookie (getCookie, setSimpleCookie)
 
-import AuthSessionHelpers (makeNewUserSession, makeSessionForUser)
+import AuthSessionHelpers (checkPassword, makeNewUserSession, makeSessionForUser)
 import DBHelpers (dbPool, scottyActionFromEitherError, scottyDoesDB, scottyGuarenteesDB)
 import DBTypes (addRow, getAllRows, getRow)
 import qualified DBTypes.Account as Account (name, PrimaryKey(..), Row(..))
@@ -48,7 +48,6 @@ handleLogin connections = do
 
 noteConsumption :: Pool -> ActionM ()
 noteConsumption connections = do
-  let checkPassword = undefined -- Delete this!
   recievedAt <- liftAndCatchIO getCurrentTime
   eConsumption <- runExceptT $ do
     let exceptMaybe e = (maybeToExceptT e) . MaybeT

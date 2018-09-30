@@ -15,6 +15,7 @@ executable poc_scotty_server
                   ,http-types
                   ,scotty < 1
                   ,scotty-cookie
+                  ,scrypt
                   ,text
                   ,time
                   ,transformers

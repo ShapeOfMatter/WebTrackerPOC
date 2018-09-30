@@ -2,7 +2,8 @@
 
 module AuthSessionHelpers where
 
-import Data.UUID.V4 (nextRandom)
+import Crypto.Scrypt (EncryptedPass(..), encryptPassIO, defaultParams, getEncryptedPass, Pass(..), verifyPass)
+import Data.Time.Clock (addUTCTime, getCurrentTime, nominalDay, UTCTime)
 import Hasql.Pool (Pool)
 import Web.Scotty (ActionM, liftAndCatchIO)
 
@@ -11,18 +12,30 @@ import DBTypes (addRow)
 import qualified DBTypes.Account as Account (Row(..))
 import qualified DBTypes.AuthSession as AuthSession (Row(..))
 import qualified UnambiguiousStrings as US
+import UUIDHelpers (asPassword, randomUUID)
 
 makeNewUserSession :: Pool -> US.LText -> ActionM (AuthSession.Row, US.SBytes)
-makeNewUserSession connections newUsername = undefined -- do
---  account <- makeNewUser connections newUsername
-  
+makeNewUserSession connections newUsername = do
+  time <- liftAndCatchIO getCurrentTime
+  account <- makeNewUser connections newUsername
+  secret <- fmap asPassword $ liftAndCatchIO randomUUID
+  authID <- liftAndCatchIO randomUUID
+  hashedSecret <- fmap getEncryptedPass $ liftAndCatchIO $ encryptPassIO defaultParams (Pass secret)
+  let authSession = AuthSession.Row {
+    AuthSession.identifier = authID,
+    AuthSession.account = Account.identifier account,
+    AuthSession.hash = hashedSecret,
+    AuthSession.expires = addUTCTime nominalDay time
+    }
+  scottyDoesDB connections $ addRow authSession
+  return (authSession, secret)
 
 makeSessionForUser :: Pool -> Account.Row -> ActionM (AuthSession.Row, US.SBytes)
 makeSessionForUser connections account = undefined
 
 makeNewUser :: Pool -> US.LText -> ActionM Account.Row
 makeNewUser connections username = do
-  newID <- liftAndCatchIO nextRandom
+  newID <- liftAndCatchIO randomUUID
   let row = Account.Row {
     Account.identifier = newID,
     Account.name = US.toStrictText username
@@ -30,3 +43,8 @@ makeNewUser connections username = do
   scottyDoesDB connections $ addRow row
   return row
 
+hashPassword :: US.SBytes -> IO US.SBytes
+hashPassword = (fmap getEncryptedPass) . (encryptPassIO defaultParams) . Pass
+
+checkPassword :: US.SBytes -> US.SBytes -> Bool
+checkPassword hash secret = fst $ verifyPass defaultParams (Pass secret) (EncryptedPass hash)
