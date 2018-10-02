@@ -13,23 +13,29 @@ import Data.Monoid ((<>))
 import Data.Time.Clock (getCurrentTime, UTCTime)
 import Hasql.Pool (Pool)
 import Network.HTTP.Types.Status (paymentRequired402)
-import Web.Scotty (ActionM, header, liftAndCatchIO, param, raise, status, text)
+import Text.Printf (printf)
+import Web.Scotty (ActionM, header, html, liftAndCatchIO, param, raise, status, text)
 import Web.Scotty.Cookie (getCookie, setSimpleCookie)
 
 import AuthSessionHelpers (checkPassword, makeNewUserSession, makeSessionForUser)
 import DBHelpers (dbPool, scottyActionFromEitherError, scottyDoesDB, scottyGuarenteesDB)
 import DBTypes (addRow, getAllRows, getRow)
-import qualified DBTypes.Account as Account (name, PrimaryKey(..), Row(..))
+import qualified DBTypes.Account as Account (identifier, name, PrimaryKey(..), Row(..))
 import qualified DBTypes.AuthSession as AuthSession (identifier, PrimaryKey(..), Row(..))
-import qualified DBTypes.Consumption as Consumption (Row(..))
+import qualified DBTypes.Consumption as Consumption (consumer, Row(..))
 import qualified UnambiguiousStrings as US
 import UUIDHelpers (fromSText, toSText, UUID)
 
-homepage :: Pool -> ActionM ()
-homepage connections = do
+homepage :: Pool -> String -> ActionM ()
+homepage connections baseURL = do
   (accounts :: [Account.Row]) <- scottyDoesDB connections getAllRows
-  let accountNames = mconcat $ intersperse ",\n" $ fmap (("\"" <>) . (<> "\"") . Account.name) accounts
-  text $ US.fromStrictText accountNames
+  (consumptions :: [Consumption.Row]) <- scottyDoesDB connections getAllRows
+  let balance account = length [c | c <- consumptions, Consumption.consumer c == Account.identifier account]
+  let pageRow account = US.packSText $ (printf "\"%s\":  %d") (Account.name account) (balance account)
+  let accountNames = mconcat $ intersperse ",\n" $ fmap pageRow accounts
+  template <- liftAndCatchIO $ readFile "Views/Homepage.html"
+  let response = (printf template) baseURL accountNames
+  html $ US.packLText response
 
 handleLogin :: Pool -> ActionM ()
 handleLogin connections = do
@@ -41,7 +47,7 @@ handleLogin connections = do
                                                                 maybeExistingUser
   setSimpleCookie "authID" $ toSText $ AuthSession.identifier newAuthSession
   either
-    (text . US.packLText . show)
+    (raise . US.packLText . show)
     (setSimpleCookie "authKey")
     (US.strictDecodeEither key)
   text $ US.fromStrictText username

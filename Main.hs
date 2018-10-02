@@ -23,8 +23,8 @@ main = do
   conf <- configurationParser "defaults.config"
   dbSettings <- let dbConf = dieOnConfigError . (simpleAccess conf "DatabaseConnectionPool")
                 in  sequenceT (
-                  dbConf "maxConnections",
-                  dbConf "maxIdleSeconds",
+                  dbConf "maxconnections",
+                  dbConf "maxidleseconds",
                   dbConf "host",
                   dbConf "port",
                   dbConf "user",
@@ -32,10 +32,11 @@ main = do
                   dbConf "database"
                 )
   pool <- dbPool dbSettings
+  baseURL <- dieOnConfigError $ simpleAccess conf "SiteSettings" "baseurl"
   scotty 3000 $ do
-    get "/" $ homepage pool
-    put "/login" $ handleLogin pool
-    post "/consume" $ noteConsumption pool
+    get "/" $ homepage pool baseURL
+    post "/login" $ handleLogin pool
+    get "/consume" $ noteConsumption pool
   release pool -- should we do this? 
 
 

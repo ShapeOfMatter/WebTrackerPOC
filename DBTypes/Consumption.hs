@@ -20,7 +20,7 @@ data Row = Row {
 }
 
 instance DBTuple Row where
-  columns = const ["consumer", "item", "happened", "status"]
+  columns = const ["consumer", "item", "happened"]
   encoder = const $ (  (consumer >$< (Encode.param Encode.uuid))
                     <> (item >$< (Encode.param Encode.text))
                     <> (happened >$< (Encode.param Encode.timestamptz))

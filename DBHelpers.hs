@@ -20,13 +20,14 @@ scottyActionFromEitherError kind =
 dbPool :: (String, String, String, String, String, String, String) -> IO Pool
 dbPool (maxConnections', maxIdleSeconds', host', port', user', password', database') =
   either die id $ do -- the either monad
-    maxConnections <- readEither maxConnections'
-    maxIdleSeconds <- fmap fromInteger $ readEither maxIdleSeconds'
-    host <- readEither host'
-    port <- readEither port'
-    user <- readEither user'
-    password <- readEither password'
-    database <- readEither database'
+    let readEither' chars = either (Left . (<> (": " <> chars))) Right $ readEither chars
+    maxConnections <- readEither' maxConnections'
+    maxIdleSeconds <- fmap fromInteger $ readEither' maxIdleSeconds'
+    host <- readEither' host'
+    port <- readEither' port'
+    user <- readEither' user'
+    password <- readEither' password'
+    database <- readEither' database'
     return $ acquire (
       maxConnections,
       maxIdleSeconds,

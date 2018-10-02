@@ -1,0 +1,24 @@
+ <!DOCTYPE html>
+<html>
+  <head>
+    <title>Web Tracker POC</title>
+  </head>
+  <body>
+    <h1>Welcome</h1>
+    <form action="/login" method="post">
+      <div>
+        <label for="username">Just enter your username; there's no passwords yet.</label>
+        <input type="text" id="username" name="username">
+      </div>
+      <div>
+        <input type="submit" value="Log In">
+      </div>
+    </form>
+    <p>
+      Add the following tag to any web page and logged-in users will log their vists to that page here.
+      <pre><code>&lt;script type=&quot;text/markdown&quot;src=&quot;%s/consume&quot;&gt;&lt;/script&gt;</code></pre>
+    </p>
+    <h3>Existing Users:</h3>
+    <div>%s</div>
+  </body>
+</html> 

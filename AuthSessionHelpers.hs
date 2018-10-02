@@ -16,11 +16,16 @@ import UUIDHelpers (asPassword, randomUUID)
 
 makeNewUserSession :: Pool -> US.LText -> ActionM (AuthSession.Row, US.SBytes)
 makeNewUserSession connections newUsername = do
-  time <- liftAndCatchIO getCurrentTime
   account <- makeNewUser connections newUsername
+  (authSession, secret) <- makeSessionForUser connections account
+  return (authSession, secret)
+
+makeSessionForUser :: Pool -> Account.Row -> ActionM (AuthSession.Row, US.SBytes)
+makeSessionForUser connections account = do
+  time <- liftAndCatchIO getCurrentTime
   secret <- fmap asPassword $ liftAndCatchIO randomUUID
-  authID <- liftAndCatchIO randomUUID
   hashedSecret <- fmap getEncryptedPass $ liftAndCatchIO $ encryptPassIO defaultParams (Pass secret)
+  authID <- liftAndCatchIO randomUUID
   let authSession = AuthSession.Row {
     AuthSession.identifier = authID,
     AuthSession.account = Account.identifier account,
@@ -29,9 +34,6 @@ makeNewUserSession connections newUsername = do
     }
   scottyDoesDB connections $ addRow authSession
   return (authSession, secret)
-
-makeSessionForUser :: Pool -> Account.Row -> ActionM (AuthSession.Row, US.SBytes)
-makeSessionForUser connections account = undefined
 
 makeNewUser :: Pool -> US.LText -> ActionM Account.Row
 makeNewUser connections username = do
