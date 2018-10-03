@@ -1,6 +1,11 @@
 # WebTrackerPOC
 
-##Goals
+## Goals
 
 - User associates a (potentially new) username with a browser-session (cookie)
 - Requests to a particular address have the http-referer logged with the corrisponding username.
+
+## Installation
+
+A brand new ubuntu-style linux box is assued.
+        

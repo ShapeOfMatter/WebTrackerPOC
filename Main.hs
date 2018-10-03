@@ -33,7 +33,8 @@ main = do
                 )
   pool <- dbPool dbSettings
   baseURL <- dieOnConfigError $ simpleAccess conf "SiteSettings" "baseurl"
-  scotty 3000 $ do
+  port <- fmap read $ dieOnConfigError $ simpleAccess conf "SiteSettings" "port" -- deliberatly unsafe.
+  scotty port $ do
     get "/" $ homepage pool baseURL
     post "/login" $ handleLogin pool
     get "/consume" $ noteConsumption pool
