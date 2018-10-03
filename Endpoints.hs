@@ -50,7 +50,8 @@ handleLogin connections = do
     (raise . US.packLText . show)
     (setSimpleCookie "authKey")
     (US.strictDecodeEither key)
-  text $ US.fromStrictText username
+  template <- liftAndCatchIO $ readFile "Views/Success.html"
+  html $ US.packLText template
 
 noteConsumption :: Pool -> ActionM ()
 noteConsumption connections = do
