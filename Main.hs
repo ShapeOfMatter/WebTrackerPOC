@@ -7,7 +7,7 @@ import Data.Monoid ((<>))
 import Data.Tuple.Sequence (sequenceT)
 import Hasql.Pool (release)
 import System.Exit (die)
-import Web.Scotty (ActionM, get, liftAndCatchIO, post, put, scotty)
+import Web.Scotty (ActionM, get, liftAndCatchIO, notFound, post, put, request, scotty)
 
 import DBHelpers (dbPool)
 import Endpoints (handleLogin, homepage, noteConsumption)
@@ -18,6 +18,11 @@ dieOnConfigError = let handleError cpError = die $ concat ["There was a config f
 configurationParser fileName = do
   eitherErrorParser <- readfile emptyCP fileName
   dieOnConfigError eitherErrorParser
+
+logRequest = notFound $ do  --  Yes we're using notFound for something other than it's intended purpose.
+                          r <- request
+                          liftAndCatchIO $ print r
+                          next
 
 main = do
   conf <- configurationParser "defaults.config"
