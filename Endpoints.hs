@@ -72,6 +72,7 @@ noteConsumption connections = do
   let setCORSHeaders = do
                          setHeader "Access-Control-Allow-Origin" "*"
                          setHeader "Access-Control-Allow-Methods" "GET"
+                         setHeader "Access-Control-Allow-Credentials" "true"
   let pleasePay e = do
                       status paymentRequired402
                       text e
