@@ -69,6 +69,9 @@ noteConsumption connections = do
                         Consumption.item = referer,
                         Consumption.happened = recievedAt
                       }
+  let setCORSHeaders = do
+                         setHeader "Access-Control-Allow-Origin" "*"
+                         setHeader "Access-Control-Allow-Methods" "GET"
   let pleasePay e = do
                       status paymentRequired402
                       text e
@@ -76,5 +79,6 @@ noteConsumption connections = do
                                      scottyDoesDB connections $ addRow consumption
                                      user <- scottyGuarenteesDB connections $ getRow $ Account.PrimaryKey $ Consumption.consumer consumption
                                      text $ US.fromStrictText $ Account.name user
+  setCORSHeaders
   either pleasePay saveAndRespond eConsumption
 
