@@ -14,7 +14,7 @@ import Data.Time.Clock (getCurrentTime, UTCTime)
 import Hasql.Pool (Pool)
 import Network.HTTP.Types.Status (paymentRequired402)
 import Text.Printf (printf)
-import Web.Scotty (ActionM, header, html, liftAndCatchIO, param, raise, status, text)
+import Web.Scotty (ActionM, header, html, liftAndCatchIO, param, raise, setHeader, status, text)
 import Web.Scotty.Cookie (getCookie, setSimpleCookie)
 
 import AuthSessionHelpers (checkPassword, makeNewUserSession, makeSessionForUser)

@@ -21,6 +21,7 @@ executable poc_scotty_server
                   ,transformers
                   ,tuple
                   ,uuid
+                  ,wai-extra
     other-modules: AuthSessionHelpers
                   ,DBHelpers
                   ,DBTypes
