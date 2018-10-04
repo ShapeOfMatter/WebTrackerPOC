@@ -14,8 +14,9 @@ import Data.Time.Clock (getCurrentTime, UTCTime)
 import Hasql.Pool (Pool)
 import Network.HTTP.Types.Status (paymentRequired402)
 import Text.Printf (printf)
+import Web.Cookie (defaultSetCookie, SetCookie(..))
 import Web.Scotty (ActionM, header, html, liftAndCatchIO, param, raise, setHeader, status, text)
-import Web.Scotty.Cookie (getCookie, setSimpleCookie)
+import Web.Scotty.Cookie (getCookie, setCookie, setSimpleCookie)
 
 import AuthSessionHelpers (checkPassword, makeNewUserSession, makeSessionForUser)
 import DBHelpers (dbPool, scottyActionFromEitherError, scottyDoesDB, scottyGuarenteesDB)
@@ -45,10 +46,16 @@ handleLogin connections = do
                                                                 (makeNewUserSession connections $ US.fromStrictText username)
                                                                 (makeSessionForUser connections)
                                                                 maybeExistingUser
-  setSimpleCookie "authID" $ toSText $ AuthSession.identifier newAuthSession
+  let cookie cookieName cookieValue = setCookie $ defaultSetCookie { setCookieName  = US.strictEncode cookieName
+                                                                ,setCookieValue = US.strictEncode cookieValue
+                                                                ,setCookiePath = Just "/"
+                                                                ,setCookieExpires = Just $ AuthSession.expires newAuthSession
+                                                                ,setCookieHttpOnly = True
+                                                                }
+  cookie "authID" $ toSText $ AuthSession.identifier newAuthSession
   either
     (raise . US.packLText . show)
-    (setSimpleCookie "authKey")
+    (cookie "authKey")
     (US.strictDecodeEither key)
   template <- liftAndCatchIO $ readFile "Views/Success.html"
   html $ US.packLText template

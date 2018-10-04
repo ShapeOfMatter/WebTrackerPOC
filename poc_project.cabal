@@ -10,6 +10,7 @@ executable poc_scotty_server
                   ,bytestring
                   ,ConfigFile
                   ,contravariant
+                  ,cookie
                   ,hasql 
                   ,hasql-pool
                   ,http-types
