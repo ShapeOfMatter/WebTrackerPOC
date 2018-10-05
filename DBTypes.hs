@@ -50,7 +50,7 @@ getAllRows = let getAllRows' template = buildSession
 
 getRow :: (DBTuple key, DBTuple row, Table row, KeyedTable key row) => key -> Session (Maybe row)
 getRow = let getRow' keyTemplate rowTemplate k = buildSession
-                                                   ["SELECT ", names keyTemplate,
+                                                   ["SELECT ", names rowTemplate,
                                                      " FROM ", table rowTemplate,
                                                      " WHERE ", whereClauses keyTemplate]
                                                    (encoder keyTemplate)
