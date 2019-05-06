@@ -1,5 +1,7 @@
 # WebTrackerPOC
 
+This was intended to demonstrate that a pure Haskell web service was a viable option. While a lot more could be done even within this limited goal, it's unlikly I'll return to do any further work in this repo. 
+
 ## Goals
 
 - User associates a (potentially new) username with a browser-session (cookie). ✓
